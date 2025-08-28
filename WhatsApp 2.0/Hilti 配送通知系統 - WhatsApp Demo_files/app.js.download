@@ -1,0 +1,503 @@
+// WhatsApp Demo Application with Smart Input Handling
+class WhatsAppDemo {
+    constructor() {
+        this.messagesContainer = document.getElementById('messagesContainer');
+        this.typingIndicator = document.getElementById('typingIndicator');
+        this.inputArea = document.getElementById('inputArea');
+        this.messageInput = document.getElementById('messageInput');
+        this.sendBtn = document.getElementById('sendBtn');
+        this.restartBtn = document.getElementById('restartBtn');
+        this.popupModal = document.getElementById('popupModal');
+        this.modalClose = document.getElementById('modalClose');
+        this.optionList = document.getElementById('optionList');
+        
+        this.currentFlow = null;
+        this.waitingForInput = null;
+        this.userInputData = {};
+        
+        this.initializeApp();
+        this.bindEvents();
+    }
+
+    // Message data from the provided JSON
+    messages = {
+        "trigger1": {
+            "id": "trigger1",
+            "title": "Trigger 1: Can receive order?",
+            "content": "🚛 Hilti 送貨通知\n您好 {orgin_name}！\n\n您的訂單 #HK240821001 已安排於 {orgin_date_week}送貨：\n\n📋 收貨人：{orgin_name}\n📞 電話：{orgin_phone}\n📍 地址：香港中環皇后大道中1號\n📅 配送日期：{orgin_date_week}\n⏰ 預計配送時間：08:30-12:00\n📦 貨物清單（請檢查貨物名稱及數量）：查看詳情\n\n請確認上述資料和時間：\n✅ 訂單資料及時間無誤\n請點擊「確認訂單資料及時間無誤」\n\n❌如適合以下情況：\n📅 改期配送\n📞 貨物清單有問題（注意：選擇此項將暫停配送）\n👤 更改收貨人\n請點擊「訂單資料及時間有誤」\n\n⚠️ 若未收到您的回覆，我們會自動安排原定時間送貨。\n\n📱 訂單追蹤請查看：\nHilti Online → 我的訂單 → 訂單追蹤\n網址：hilti.com.hk/myorders\n\n💬 需要其他協助？WhatsApp客服 Hailey：點擊聯絡\n\n🤖 本訊息由系統自動發送，無法回覆對話",
+            "buttons": [
+                {
+                    "text": "✅ 訂單資料及時間無誤",
+                    "action": "trigger2"
+                },
+                {
+                    "text": "❌ 訂單資料及時間有誤",
+                    "action": "show_popup",
+                    "listItems": [
+                        {
+                            "emoji": "📅",
+                            "title": "需要改期配送",
+                            "description": "重新安排配送日期",
+                            "action": "trigger3"
+                        },
+                        {
+                            "emoji": "📞",
+                            "title": "貨物清單有問題",
+                            "description": "注意：選擇此項將暫停配送",
+                            "action": "trigger4"
+                        },
+                        {
+                            "emoji": "👤",
+                            "title": "更改收貨人",
+                            "description": "修改收貨人姓名或電話",
+                            "action": "trigger5"
+                        }
+                    ]
+                }
+            ]
+        },
+        "trigger2": {
+            "id": "trigger2",
+            "title": "Trigger 2: Confirmation - delivery scheduled",
+            "content": "📅 Hilti 配送確認通知\n您好 {confirmed_name}！\n\n感謝您確認是次的配送安排。\n\n📦 訂單 #HK240821001\n📍 地址：香港中環皇后大道中1號\n📞 電話：{confirmed_phone}\n📅 配送日期：(confirmed delivery data）\n⏰ 預計配送時間：08:30-12:00\n📦 貨物清單：查看詳情\n\n📋 配送須知：\n• 司機將於送貨前最少15分鐘致電確認\n• 請確保指定收貨人員在現場\n• 請預留充足時間完成交收\n• 如需簽收，請準備相關印章或簽名\n• 如為貨到付款（COD），請準備足夠現金",
+            "buttons": [
+                {
+                    "text": "（Driver trigger） 繼續到配送日",
+                    "action": "trigger6"
+                }
+            ]
+        },
+        "trigger3": {
+            "id": "trigger3",
+            "title": "改期配送",
+            "content": "📅 Hilti 改期配送\n您好 陳先生！\n\n了解您未能接收上述的配送時間，我們已為您重新安排。\n\n📦 訂單 #HK240821001\n📋 收貨人：陳先生\n📞 電話：61231234\n📍 地址：香港中環皇后大道中1號\n\n⚠️ 如以上日期都無法配合，請聯絡客服安排其他時間\n⚠️ 若未收到您的回覆，我們按原定時間送貨",
+            "buttons": [
+                {
+                    "text": "📅 選擇新時間",
+                    "action": "show_popup",
+                    "listItems": [
+                        {
+                            "emoji": "🗓️",
+                            "title": "2025/8/23（星期六）",
+                            "description": "（TBC, Maybe time range, like belows）",
+                            "action": "trigger2"
+                        },
+                        {
+                            "emoji": "🗓️",
+                            "title": "2025/8/26（星期一）",
+                            "description": "08:30-12:00",
+                            "action": "trigger2"
+                        },
+                        {
+                            "emoji": "🗓️",
+                            "title": "2025/8/27（星期二）",
+                            "description": "08:30-12:00",
+                            "action": "trigger2"
+                        },
+                        {
+                            "emoji": "🗓️",
+                            "title": "2025/8/28（星期三）",
+                            "description": "08:30-12:00",
+                            "action": "trigger2"
+                        }
+                    ]
+                },
+                {
+                    "text": "📞 聯絡客服",
+                    "action": "trigger4"
+                },
+                {
+                    "text": "🔙 返回主目錄",
+                    "action": "trigger1"
+                }
+            ]
+        },
+        "trigger4": {
+            "id": "trigger4",
+            "title": "Hilti CS contact options",
+            "content": "🛎️ Hilti 客戶服務選擇確認\n\n⚠️ 重要提醒：\n您已選擇「聯絡客服」。請確認，如選擇此服務，您的訂單將暫時暫停配送，等待我們客服團隊協助處理後才會再安排派送。\n\n若未收到您的回覆，我們會自動安排原定時間送貨。",
+            "buttons": [
+                {
+                    "text": "💬 WhatsApp客服",
+                    "action": "trigger4_2"
+                },
+                {
+                    "text": "🔙 返回主目錄",
+                    "action": "trigger1"
+                }
+            ]
+        },
+        "trigger4_2": {
+            "id": "trigger4_2", 
+            "title": "Hilti WhatsApp客服",
+            "content": "💬 Hilti WhatsApp客服\n\n如未能確認上述的配送安排，或訂單資料有問題，請點擊以下連結聯絡我們：\n（點擊連結將轉至Hilti WhatsApp客服）",
+            "buttons": [
+                {
+                    "text": "💬 聯絡 Hailey",
+                    "action": "end_cs"
+                }
+            ]
+        },
+        "trigger5": {
+            "id": "trigger5",
+            "title": "更新收貨人資訊",
+            "content": "🖊️ 更新收貨人資訊\n\n請於【deadline】前完成以下資料更新：\n\n請輸入新的收貨人姓名：",
+            "inputType": "name",
+            "buttons": []
+        },
+        "name_input_received": {
+            "id": "name_input_received",
+            "title": "收到姓名",
+            "content": "✅ 已收到收貨人姓名。\n請輸入新的聯絡電話：",
+            "inputType": "phone",
+            "buttons": []
+        },
+        "phone_input_received": {
+            "id": "phone_input_received",
+            "title": "資料確認",
+            "content": "✅ 已收到新的收貨人資料：\n👤 姓名：{user_name}\n📞 電話：{user_phone}\n\n請確認是否正確？",
+            "buttons": [
+                {
+                    "text": "✅ 確認",
+                    "action": "trigger2"
+                },
+                {
+                    "text": "✏️ 重新輸入",
+                    "action": "trigger5"
+                }
+            ]
+        },
+        "trigger6": {
+            "id": "trigger6",
+            "title": "配送追蹤",
+            "content": "📍 Hilti 配送追蹤\n陳先生，您的訂單今日送達！\n\n📦 訂單 #HK240821001 配送安排：\n📋 收貨人：{confrimed_name}\n📞 電話：{confirmed_phone}\n📍 地址：香港中環皇后大道中1號\n🚚 送貨時段：08:30-12:00\n🚛 司機：李師傅 (9123-4567)\n\n📋 配送須知：\n• 司機將於送貨前最少15分鐘致電確認\n• 請確保指定收貨人員在現場\n• 請預留充足時間完成交收\n\n📱 訂單追蹤：hilti.com.hk/myorders",
+            "buttons": [
+                {
+                    "text": "(Logflow trigger)繼續到在途通知",
+                    "action": "trigger7"
+                }
+            ]
+        },
+        "trigger7": {
+            "id": "trigger7",
+            "title": "在途通知",
+            "content": "🚛 司機正在前往送貨地址\n\n陳先生，司機現正出發！\n\n司機將於到達前最少15分鐘致電聯絡。",
+            "buttons": [
+                {
+                    "text": "(Driver trigger) 配送成功",
+                    "action": "trigger9"
+                },
+                {
+                    "text": "(Driver trigger)配送失敗",
+                    "action": "trigger8"
+                },
+                {
+                    "text": "(Driver trigger) 客人要求改期",
+                    "action": "reschedule_confirm"
+                }
+            ]
+        },
+        "reschedule_confirm": {
+            "id": "reschedule_confirm",
+            "title": "改期確認",
+            "content": "📅 收到改期要求\n\n我們已收到您的改期要求。司機將協助您重新安排配送時間。\n\n正在為您安排新的配送日期...",
+            "buttons": [
+                {
+                    "text": "📅 確認新配送安排",
+                    "action": "trigger2"
+                }
+            ]
+        },
+        "trigger8": {
+            "id": "trigger8",
+            "title": "配送失敗",
+            "content": "📦 Hilti 配送未能完成通知\n您好 陳先生！\n我們嘗試於{confirmed_delivery_date}送達您的訂單，但您暫時無法接收，貨物將會退回倉庫。\n\n📦 訂單 #HK240821001\n📋 收貨人：陳先生\n📍 地址：香港中環皇后大道中1號\n📅 原定配送日期：{origin_delivery_date}\n\n🔄 下一步安排：\n貨物已退回倉庫，請您聯絡客服重新安排配送時間\n\n💬 WhatsApp 客服 Hailey：點擊聯絡\n\n感謝您的配合，期待盡快為您安排新的送貨時間！",
+            "buttons": [
+                {
+                    "text": "🔄 重新開始",
+                    "action": "trigger1"
+                }
+            ]
+        },
+        "trigger9": {
+            "id": "trigger9",
+            "title": "配送完成",
+            "content": "✅ Hilti 配送完成確認\n您好 陳先生！\n您的訂單已成功配送完成！\n\n📦 訂單 #HK240821001\n📋 收貨人：{confrimed_name}\n📍 地址：香港中環皇后大道中1號\n📅 配送日期：{confirmed_delivery_date}\n\n📱 售後服務：\n如對產品有任何疑問或需要技術支援，請聯絡我們：\n💬 WhatsApp 客服 Hailey：點擊聯絡\n\n🙏 感謝選擇 Hilti！\n如您滿意我們的服務，歡迎繼續選用 Hilti 優質產品。",
+            "buttons": [
+                {
+                    "text": "🔄 重新開始",
+                    "action": "trigger1"
+                }
+            ]
+        },
+        "end_cs": {
+            "id": "end_cs",
+            "title": "轉接客服",
+            "content": "🔄 正在為您轉接到 WhatsApp 客服 Hailey...\n請稍候，客服人員將會協助您處理訂單相關問題。\n\n感謝您的耐心等候！",
+            "buttons": [
+                {
+                    "text": "🔄 重新開始",
+                    "action": "trigger1"
+                }
+            ]
+        },
+        "invalid_input": {
+            "id": "invalid_input",
+            "title": "無法識別回覆",
+            "content": "⚠️ 無法識別您的回覆\n請選擇上述選項來確認：\n\n💬 需要其他協助？WhatsApp客服 Hailey：點擊聯絡",
+            "buttons": []
+        }
+    };
+
+    initializeApp() {
+        // Input area is always visible and ready
+        this.showInputArea();
+        this.startChatFlow();
+    }
+
+    bindEvents() {
+        // Restart button
+        this.restartBtn.addEventListener('click', () => {
+            this.restartChat();
+        });
+
+        // Modal events
+        this.modalClose.addEventListener('click', () => {
+            this.hidePopup();
+        });
+
+        this.popupModal.querySelector('.modal-overlay').addEventListener('click', () => {
+            this.hidePopup();
+        });
+
+        // Input events - always enabled
+        this.sendBtn.addEventListener('click', () => {
+            this.handleSendMessage();
+        });
+
+        this.messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.handleSendMessage();
+            }
+        });
+    }
+
+    startChatFlow() {
+        setTimeout(() => {
+            this.showMessage('trigger1');
+        }, 1000);
+    }
+
+    restartChat() {
+        this.messagesContainer.innerHTML = '';
+        this.hidePopup();
+        this.currentFlow = null;
+        this.waitingForInput = null;
+        this.userInputData = {};
+        this.messageInput.value = '';
+        this.startChatFlow();
+    }
+
+    showTypingIndicator() {
+        this.typingIndicator.classList.remove('hidden');
+        this.scrollToBottom();
+    }
+
+    hideTypingIndicator() {
+        this.typingIndicator.classList.add('hidden');
+    }
+
+    async showMessage(messageId, userResponse = null) {
+        // Show user message if provided
+        if (userResponse) {
+            this.addUserMessage(userResponse);
+            await this.delay(500);
+        }
+
+        this.showTypingIndicator();
+        await this.delay(1500);
+        this.hideTypingIndicator();
+
+        const message = this.messages[messageId];
+        if (!message) {
+            console.error('Message not found:', messageId);
+            return;
+        }
+
+        let content = message.content;
+        
+        // Replace placeholders with user data
+        if (this.userInputData.name) {
+            content = content.replace('{user_name}', this.userInputData.name);
+        }
+        if (this.userInputData.phone) {
+            content = content.replace('{user_phone}', this.userInputData.phone);
+        }
+
+        this.addSystemMessage(content, message.buttons);
+        this.currentFlow = messageId;
+
+        // Handle input requirements
+        if (message.inputType) {
+            this.waitingForInput = message.inputType;
+        } else {
+            this.waitingForInput = null;
+        }
+    }
+
+    addSystemMessage(content, buttons = []) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message message--received';
+
+        const avatarDiv = document.createElement('div');
+        avatarDiv.className = 'message-avatar';
+        avatarDiv.innerHTML = '<div class="avatar-icon">H</div>';
+
+        const bubbleDiv = document.createElement('div');
+        bubbleDiv.className = 'message-bubble';
+        bubbleDiv.textContent = content;
+
+        // Add buttons if provided
+        if (buttons && buttons.length > 0) {
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'message-buttons';
+
+            buttons.forEach(button => {
+                const btn = document.createElement('button');
+                btn.className = 'message-btn';
+                btn.textContent = button.text;
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('Button clicked:', button.text, 'Action:', button.action);
+                    this.handleButtonClick(button);
+                });
+                buttonsDiv.appendChild(btn);
+            });
+
+            bubbleDiv.appendChild(buttonsDiv);
+        }
+
+        messageDiv.appendChild(avatarDiv);
+        messageDiv.appendChild(bubbleDiv);
+        this.messagesContainer.appendChild(messageDiv);
+        
+        this.scrollToBottom();
+    }
+
+    addUserMessage(text) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message message--sent';
+
+        const bubbleDiv = document.createElement('div');
+        bubbleDiv.className = 'message-bubble';
+        bubbleDiv.textContent = text;
+
+        messageDiv.appendChild(bubbleDiv);
+        this.messagesContainer.appendChild(messageDiv);
+        
+        this.scrollToBottom();
+    }
+
+    handleButtonClick(button) {
+        console.log('Handling button click:', button);
+        
+        if (button.action === 'show_popup') {
+            this.showPopup(button.listItems);
+        } else {
+            // Show the message immediately
+            setTimeout(() => {
+                this.showMessage(button.action, button.text);
+            }, 100);
+        }
+    }
+
+    showPopup(listItems) {
+        this.optionList.innerHTML = '';
+
+        listItems.forEach(item => {
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'option-item';
+            optionDiv.innerHTML = `
+                <div class="option-emoji">${item.emoji}</div>
+                <div class="option-content">
+                    <div class="option-title">${item.title}</div>
+                    <div class="option-description">${item.description}</div>
+                </div>
+            `;
+            
+            optionDiv.addEventListener('click', () => {
+                console.log('Option selected:', item.title, 'Action:', item.action);
+                this.hidePopup();
+                setTimeout(() => {
+                    this.showMessage(item.action, item.title);
+                }, 100);
+            });
+
+            this.optionList.appendChild(optionDiv);
+        });
+
+        this.popupModal.classList.remove('hidden');
+    }
+
+    hidePopup() {
+        this.popupModal.classList.add('hidden');
+    }
+
+    showInputArea() {
+        // Input area is always visible, just ensure it's focused when needed
+        if (this.waitingForInput) {
+            setTimeout(() => {
+                this.messageInput.focus();
+            }, 100);
+        }
+    }
+
+    // Smart input handling logic
+    handleSendMessage() {
+        const message = this.messageInput.value.trim();
+        if (!message) return;
+
+        // Clear input immediately
+        this.messageInput.value = '';
+
+        console.log('Processing input:', message, 'Waiting for:', this.waitingForInput, 'Current flow:', this.currentFlow);
+
+        // Smart logic: Check if we're in a special input flow
+        if (this.waitingForInput === 'name') {
+            // We're expecting name input in the recipient update flow
+            this.userInputData.name = message;
+            this.showMessage('name_input_received', message);
+        } else if (this.waitingForInput === 'phone') {
+            // We're expecting phone input in the recipient update flow
+            this.userInputData.phone = message;
+            this.showMessage('phone_input_received', message);
+        } else {
+            // Not in a special input flow - show standard error response
+            console.log('Showing invalid input response for:', message);
+            this.showMessage('invalid_input', message);
+        }
+    }
+
+    scrollToBottom() {
+        setTimeout(() => {
+            // Scroll the messages container
+            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            // Also scroll the chat container
+            const chatContainer = document.querySelector('.chat-container');
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }, 100);
+    }
+
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+
+// Initialize the app when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Initializing WhatsApp Demo');
+    new WhatsAppDemo();
+});
